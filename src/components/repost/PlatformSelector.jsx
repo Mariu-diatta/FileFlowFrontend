@@ -8,12 +8,34 @@ const PLATFORM_LABELS = {
   linkedin: "LinkedIn", facebook: "Facebook", x: "X (Twitter)",
 };
 
+// Liste de secours utilisée si l'API /repost/platforms/ n'est pas disponible
+// ou renvoie une liste vide, afin que les plateformes cibles restent
+// toujours visibles et sélectionnables dans la section Multi-publication.
+const DEFAULT_PLATFORM_SPECS = [
+  { id: "tiktok", width: 1080, height: 1920 },
+  { id: "instagram", width: 1080, height: 1920 },
+  { id: "youtube", width: 1080, height: 1920 },
+  { id: "linkedin", width: 1920, height: 1080 },
+  { id: "facebook", width: 1080, height: 1080 },
+  { id: "x", width: 1920, height: 1080 },
+];
+
 export default function PlatformSelector() {
   const { platforms, togglePlatform } = useCampaignStore();
-  const [specs, setSpecs] = useState([]);
+  const [specs, setSpecs] = useState(DEFAULT_PLATFORM_SPECS);
 
   useEffect(() => {
-    repostApi.listPlatforms().then(({ data }) => setSpecs(data.platforms));
+    repostApi
+      .listPlatforms()
+      .then(({ data }) => {
+        if (Array.isArray(data?.platforms) && data.platforms.length > 0) {
+          setSpecs(data.platforms);
+        }
+      })
+      .catch(() => {
+        // On garde la liste de secours : mieux vaut des tailles par défaut
+        // qu'une section vide qui bloque la sélection des plateformes.
+      });
   }, []);
 
   return (

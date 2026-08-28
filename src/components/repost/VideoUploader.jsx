@@ -1,13 +1,12 @@
-import { useRef } from "react";
-import { UploadCloud, Film } from "lucide-react";
+import { Film } from "lucide-react";
 import { useCampaignStore } from "../../stores/campaignStore";
+import FileDropzone from "../FileDropzone";
 
 export default function VideoUploader() {
   const { sourceFile, sourceUrl, setSourceFile } = useCampaignStore();
-  const hiddenVideoRef = useRef(null);
 
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
+  const handleFiles = (files) => {
+    const file = files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
 
@@ -24,13 +23,13 @@ export default function VideoUploader() {
 
   return (
     <div>
-      <label className="block border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 transition bg-white">
-        <UploadCloud className="mx-auto mb-2 text-gray-400" size={28} />
-        <p className="text-sm text-gray-600">
-          {sourceFile ? sourceFile.name : "Clique pour choisir une vidéo"}
-        </p>
-        <input type="file" accept="video/*" className="hidden" onChange={handleFile} />
-      </label>
+      <FileDropzone
+        accept="video/*"
+        files={sourceFile ? [sourceFile] : []}
+        onFiles={handleFiles}
+        compact
+        label="Glisse-dépose ta vidéo ici, clique pour parcourir, ou importe depuis un lien (Drive, Dropbox, URL...)"
+      />
 
       {sourceUrl && (
         <div className="mt-3 rounded-lg overflow-hidden bg-black">

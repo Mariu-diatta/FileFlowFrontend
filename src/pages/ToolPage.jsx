@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { UploadCloud, Download, Lock, Loader2, ArrowLeft } from "lucide-react";
+import { Download, Lock, Loader2, ArrowLeft } from "lucide-react";
 import { tools as toolsApi } from "../api/client";
 import toolConfig from "../toolConfig";
 import { useAuth } from "../context/AuthContext";
 import ToolComments from "../components/ToolComments";
+import FileDropzone from "../components/FileDropzone";
+import ResultView from "../components/ResultView";
 
 export default function ToolPage() {
   const { slug } = useParams();
@@ -33,11 +35,6 @@ export default function ToolPage() {
     setResultJson(null);
     setError("");
   }, [slug]);
-
-  const handleFileChange = (e) => {
-    const list = Array.from(e.target.files);
-    setFiles(config.multiple ? list : list.slice(0, 1));
-  };
 
   const handleParamChange = (name, value) => {
     setParams((prev) => ({ ...prev, [name]: value }));
@@ -111,15 +108,12 @@ export default function ToolPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          <label className="block border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-400 transition">
-            <UploadCloud className="mx-auto mb-2 text-gray-400" size={32} />
-            <p className="text-sm text-gray-600">
-              {files.length > 0
-                ? files.map((f) => f.name).join(", ")
-                : `Clique pour choisir ${config.multiple ? "un ou plusieurs fichiers" : "un fichier"}`}
-            </p>
-            <input type="file" multiple={config.multiple} className="hidden" onChange={handleFileChange} />
-          </label>
+          <FileDropzone
+            multiple={config.multiple}
+            files={files}
+            onFiles={setFiles}
+            label={`Glisse-dépose ${config.multiple ? "un ou plusieurs fichiers" : "un fichier"} ici, clique pour parcourir, ou importe depuis un lien`}
+          />
 
           {(config.fields || []).map((f) => (
             <div key={f.name}>
@@ -169,11 +163,7 @@ export default function ToolPage() {
             </a>
           )}
 
-          {resultJson && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm overflow-auto max-h-96">
-              <pre>{JSON.stringify(resultJson, null, 2)}</pre>
-            </div>
-          )}
+          {resultJson && <ResultView data={resultJson} />}
         </div>
       )}
 
