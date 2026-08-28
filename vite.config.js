@@ -8,6 +8,5 @@ export default defineConfig({
   preview: {
     allowedHosts: ['fileflowfrontend.onrender.com'],
   },
-})import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+})
 
