@@ -1,11 +1,18 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { billing } from "../api/client";
-import { Crown } from "lucide-react";
+import { billing, auth as authApi } from "../api/client";
+import { Crown, Trash2, AlertTriangle } from "lucide-react";
 
 export default function Account() {
-  const { user, refreshMe } = useAuth();
+  const { user, refreshMe, logout } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   if (!user) return null;
 
@@ -16,6 +23,21 @@ export default function Account() {
       await refreshMe();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await authApi.deleteAccount(deletePassword);
+      logout();
+      navigate("/");
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || "Erreur lors de la suppression du compte.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -56,11 +78,59 @@ export default function Account() {
         <button
           onClick={handleCancel}
           disabled={loading}
-          className="mt-6 text-sm text-red-600 hover:underline disabled:opacity-50"
+          className="mt-6 text-sm text-red-600 hover:underline disabled:opacity-50 block"
         >
           Résilier mon abonnement Premium
         </button>
       )}
+
+      {/* --- Zone de suppression de compte --- */}
+      <div className="mt-10 border-t border-gray-200 pt-6">
+        <h2 className="text-sm font-semibold text-red-700 flex items-center gap-2 mb-2">
+          <AlertTriangle size={16} /> Zone de danger
+        </h2>
+
+        {!showDeleteConfirm ? (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-2 text-sm text-red-600 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50"
+          >
+            <Trash2 size={16} /> Supprimer mon compte
+          </button>
+        ) : (
+          <form onSubmit={handleDeleteAccount} className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+            <p className="text-sm text-red-800">
+              Cette action est <strong>définitive</strong> : ton compte, tes campagnes et tes
+              commentaires seront supprimés sans possibilité de retour.
+            </p>
+            <input
+              type="password"
+              required
+              placeholder="Confirme avec ton mot de passe"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              className="w-full border border-red-300 rounded-lg px-3 py-2 text-sm"
+            />
+            {deleteError && <p className="text-sm text-red-700">{deleteError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={deleting}
+                className="bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Suppression..." : "Confirmer la suppression"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); setDeleteError(""); }}
+                className="text-sm text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

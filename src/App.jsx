@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import ToolPage from "./pages/ToolPage";
 import Pricing from "./pages/Pricing";
 import Account from "./pages/Account";
+import RepostStudio from "./pages/RepostStudio";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -48,6 +49,14 @@ function AppRoutes() {
               element={
                 <ProtectedRoute>
                   <Account />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/repost-studio"
+              element={
+                <ProtectedRoute>
+                  <RepostStudio />
                 </ProtectedRoute>
               }
             />

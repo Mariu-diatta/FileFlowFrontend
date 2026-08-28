@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://fileflowbackend.onrender.com/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 const client = axios.create({ baseURL: API_BASE });
 
@@ -43,6 +43,7 @@ export const auth = {
     client.post("/auth/register/", { email, username, password }),
   login: (email, password) => client.post("/auth/login/", { email, password }),
   me: () => client.get("/auth/me/"),
+  deleteAccount: (password) => client.post("/auth/delete/", { password }),
 };
 
 export const tools = {

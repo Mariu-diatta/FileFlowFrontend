@@ -4,6 +4,7 @@ import { UploadCloud, Download, Lock, Loader2, ArrowLeft } from "lucide-react";
 import { tools as toolsApi } from "../api/client";
 import toolConfig from "../toolConfig";
 import { useAuth } from "../context/AuthContext";
+import ToolComments from "../components/ToolComments";
 
 export default function ToolPage() {
   const { slug } = useParams();
@@ -175,6 +176,8 @@ export default function ToolPage() {
           )}
         </div>
       )}
+
+      <ToolComments slug={slug} />
     </div>
   );
 }

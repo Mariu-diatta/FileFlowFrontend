@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { FileStack, Crown, LogOut, User } from "lucide-react";
+import { FileStack, Crown, LogOut, User, Sparkles } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
@@ -15,6 +15,11 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-4">
+          {user && (
+            <Link to="/repost-studio" className="text-sm text-gray-600 hover:text-blue-600 flex items-center gap-1">
+              <Sparkles size={16} className="text-blue-500" /> Multi-publication
+            </Link>
+          )}
           <Link to="/pricing" className="text-sm text-gray-600 hover:text-blue-600 flex items-center gap-1">
             <Crown size={16} className="text-amber-500" /> Premium
           </Link>
