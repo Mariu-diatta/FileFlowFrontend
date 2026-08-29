@@ -18,17 +18,26 @@ export default function Home() {
           Fusionne, compresse, convertis, transcris, résume : pensé pour les étudiants et tous ceux
           qui jonglent avec des fichiers au quotidien.
         </p>
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <Link
-            to={user ? "/dashboard" : "/register"}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700"
+            to="/dashboard"
+            className="w-full sm:w-auto text-center bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700"
           >
-            {user ? "Ouvrir le catalogue" : "Commencer gratuitement"}
+            Utiliser les outils gratuitement
           </Link>
-          <Link to="/pricing" className="text-gray-700 font-medium px-6 py-3 hover:text-blue-600">
-            Voir les tarifs
-          </Link>
+          {!user && (
+            <Link
+              to="/register"
+              className="w-full sm:w-auto text-center text-gray-700 font-medium px-6 py-3 hover:text-blue-600"
+            >
+              Créer un compte
+            </Link>
+          )}
         </div>
+        <p className="text-sm text-gray-400 mt-4">
+          Aucun compte requis pour les outils gratuits. Un compte débloque des limites plus hautes,
+          et Premium ajoute les outils IA.
+        </p>
       </section>
 
       <section className="max-w-5xl mx-auto px-4 pb-20 grid sm:grid-cols-3 gap-6">

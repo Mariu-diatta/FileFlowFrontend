@@ -28,35 +28,18 @@ function AppRoutes() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tools/:slug"
-              element={
-                <ProtectedRoute>
-                  <ToolPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* Le catalogue, les outils et la multi-publication ne nécessitent
+                pas de compte : seuls les outils marqués "is_premium_only"
+                (modèles d'IA) sont bloqués, indépendamment de la connexion —
+                voir ToolPage et le backend (tools/permissions.py). */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/tools/:slug" element={<ToolPage />} />
+            <Route path="/repost-studio" element={<RepostStudio />} />
             <Route
               path="/account"
               element={
                 <ProtectedRoute>
                   <Account />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/repost-studio"
-              element={
-                <ProtectedRoute>
-                  <RepostStudio />
                 </ProtectedRoute>
               }
             />

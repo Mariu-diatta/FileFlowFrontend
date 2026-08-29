@@ -3,6 +3,7 @@ import { Sparkles, Loader2, Send } from "lucide-react";
 import VideoUploader from "../components/repost/VideoUploader";
 import ClipTimeEditor from "../components/repost/ClipTimeEditor";
 import PlatformSelector from "../components/repost/PlatformSelector";
+import PlatformEditor from "../components/repost/PlatformEditor";
 import { VariantGrid } from "../components/repost/VariantGrid";
 import { useCampaignStore } from "../stores/campaignStore";
 import { useVideoJob } from "../hooks/useVideoJob";
@@ -10,7 +11,7 @@ import { repostApi } from "../api/repost";
 
 export default function RepostStudio() {
   const {
-    sourceFile, clipStart, clipEnd, captionText, platforms,
+    sourceFile, clipStart, clipEnd, captionText, platforms, platformOptions,
     jobId, setCaptionText, setJobId, setJob,
   } = useCampaignStore();
 
@@ -32,6 +33,7 @@ export default function RepostStudio() {
         clipDuration: clipEnd - clipStart,
         captionText,
         platforms,
+        platformOptions,
       });
       setJobId(data.id);
       setJob(data);
@@ -85,6 +87,7 @@ export default function RepostStudio() {
           </div>
 
           <PlatformSelector />
+          <PlatformEditor />
 
           {error && <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
 

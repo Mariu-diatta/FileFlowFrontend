@@ -5,6 +5,16 @@ const PLATFORM_LABELS = {
   linkedin: "LinkedIn", facebook: "Facebook", x: "X (Twitter)",
 };
 
+const FILTER_LABELS = {
+  none: null,
+  noir_blanc: "Noir & blanc",
+  sepia: "Sépia",
+  vintage: "Vintage",
+  contraste: "Contraste +",
+  chaud: "Ton chaud",
+  froid: "Ton froid",
+};
+
 const STATUS_META = {
   queued: { icon: Clock, label: "En attente", color: "text-gray-400" },
   processing: { icon: Loader2, label: "Traitement...", color: "text-blue-500 animate-spin" },
@@ -20,7 +30,14 @@ export function VariantCard({ variant }) {
     <article className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       <header className="flex items-center justify-between px-3 py-2 border-b border-gray-100">
         <strong className="text-sm">{PLATFORM_LABELS[variant.platform] || variant.platform}</strong>
-        <span className="text-xs text-gray-400">{variant.width} × {variant.height}</span>
+        <div className="flex items-center gap-2">
+          {FILTER_LABELS[variant.filter_name] && (
+            <span className="text-[11px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
+              {FILTER_LABELS[variant.filter_name]}
+            </span>
+          )}
+          <span className="text-xs text-gray-400">{variant.width} × {variant.height}</span>
+        </div>
       </header>
 
       <div className="bg-black flex items-center justify-center aspect-video">
