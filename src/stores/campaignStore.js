@@ -83,7 +83,9 @@ export const useCampaignStore = create((set, get) => ({
       },
     })),
 
-  // Vidéo incrustée (picture-in-picture)
+  // Vidéo superposée : incrustation (PiP), écran partagé (côte à côte /
+  // haut-bas) ou comparateur avant/après (voir repost/pipeline.py côté
+  // serveur pour le détail des dispositions "layout").
   setVideoOverlayFile: (platform, file, url) =>
     set((state) => ({
       platformOptions: {
@@ -93,7 +95,10 @@ export const useCampaignStore = create((set, get) => ({
           videoOverlayFile: file,
           videoOverlayUrl: url,
           videoOverlayConfig: file
-            ? { x: 0.6, y: 0.05, width_ratio: 0.35, start: 0, ...(state.platformOptions[platform]?.videoOverlayConfig || {}) }
+            ? {
+                layout: "pip", x: 0.6, y: 0.05, width_ratio: 0.35, start: 0, end: null,
+                ...(state.platformOptions[platform]?.videoOverlayConfig || {}),
+              }
             : null,
         },
       },

@@ -244,17 +244,30 @@ function DrawingCanvas({ platform, dims }) {
   );
 }
 
-// --- Vidéo superposée (picture-in-picture) --------------------------------
+// --- Vidéo superposée (PiP / écran partagé / comparateur avant-après) -----
 const PIP_SIZES = [
   { id: "small", label: "Petit", width_ratio: 0.25 },
   { id: "medium", label: "Moyen", width_ratio: 0.35 },
   { id: "large", label: "Grand", width_ratio: 0.5 },
 ];
 
+// Dispositions possibles pour la 2ᵉ vidéo (voir repost/pipeline.py côté
+// serveur, qui fait tout le travail ffmpeg). Aucune ne nécessite d'IA.
+const LAYOUTS = [
+  { id: "pip", label: "Incrustation (PiP)", hint: "Une petite vidéo flottante par-dessus l'autre." },
+  { id: "side_by_side", label: "Côte à côte", hint: "Les deux vidéos, gauche / droite, à parts égales." },
+  { id: "top_bottom", label: "Haut / bas", hint: "Les deux vidéos, empilées à parts égales." },
+  { id: "compare_h", label: "Avant / après ↔", hint: "Un trait balaie l'écran horizontalement pour révéler la 2ᵉ vidéo." },
+  { id: "compare_v", label: "Avant / après ↕", hint: "Un trait balaie l'écran verticalement pour révéler la 2ᵉ vidéo." },
+];
+
+const DEFAULT_VIDEO_OVERLAY_CONFIG = { layout: "pip", x: 0.6, y: 0.05, width_ratio: 0.35, start: 0, end: null };
+
 function VideoOverlayPanel({ platform }) {
   const { getPlatformOption, setVideoOverlayFile, setVideoOverlayConfig, clearVideoOverlay } = useCampaignStore();
   const current = getPlatformOption(platform);
-  const cfg = current.videoOverlayConfig || { x: 0.6, y: 0.05, width_ratio: 0.35, start: 0 };
+  const cfg = current.videoOverlayConfig || DEFAULT_VIDEO_OVERLAY_CONFIG;
+  const layout = LAYOUTS.find((l) => l.id === cfg.layout) || LAYOUTS[0];
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -269,7 +282,7 @@ function VideoOverlayPanel({ platform }) {
     <div className="mt-2 border-t border-gray-100 pt-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
-          <Video size={13} /> Vidéo superposée (PiP)
+          <Video size={13} /> Vidéo superposée
         </span>
         {current.videoOverlayFile ? (
           <button type="button" onClick={() => clearVideoOverlay(platform)} className="text-gray-400 hover:text-red-500">
@@ -284,39 +297,65 @@ function VideoOverlayPanel({ platform }) {
       </div>
 
       {current.videoOverlayFile && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <div className="mt-1.5 space-y-1.5">
           <select
-            value={activePreset?.id || "top_right"}
-            onChange={(e) => {
-              const preset = POSITION_PRESETS.find((p) => p.id === e.target.value);
-              if (preset) setVideoOverlayConfig(platform, { x: preset.x, y: preset.y });
-            }}
-            className="text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+            value={layout.id}
+            onChange={(e) => setVideoOverlayConfig(platform, { layout: e.target.value })}
+            className="text-xs border border-gray-200 rounded-lg px-1.5 py-1 w-full"
           >
-            {POSITION_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>{p.label}</option>
+            {LAYOUTS.map((l) => (
+              <option key={l.id} value={l.id}>{l.label}</option>
             ))}
           </select>
-          <select
-            value={activeSize.id}
-            onChange={(e) => {
-              const size = PIP_SIZES.find((s) => s.id === e.target.value);
-              if (size) setVideoOverlayConfig(platform, { width_ratio: size.width_ratio });
-            }}
-            className="text-xs border border-gray-200 rounded-lg px-1.5 py-1"
-          >
-            {PIP_SIZES.map((s) => (
-              <option key={s.id} value={s.id}>{s.label}</option>
-            ))}
-          </select>
-          <label className="text-xs text-gray-500 flex items-center gap-1">
-            Départ
-            <input
-              type="number" min={0} step={0.5} value={cfg.start}
-              onChange={(e) => setVideoOverlayConfig(platform, { start: Math.max(0, Number(e.target.value)) })}
-              className="w-14 text-xs border border-gray-200 rounded-lg px-1.5 py-1"
-            />s
-          </label>
+          <p className="text-[11px] text-gray-400">{layout.hint}</p>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {layout.id === "pip" && (
+              <>
+                <select
+                  value={activePreset?.id || "top_right"}
+                  onChange={(e) => {
+                    const preset = POSITION_PRESETS.find((p) => p.id === e.target.value);
+                    if (preset) setVideoOverlayConfig(platform, { x: preset.x, y: preset.y });
+                  }}
+                  className="text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+                >
+                  {POSITION_PRESETS.map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={activeSize.id}
+                  onChange={(e) => {
+                    const size = PIP_SIZES.find((s) => s.id === e.target.value);
+                    if (size) setVideoOverlayConfig(platform, { width_ratio: size.width_ratio });
+                  }}
+                  className="text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+                >
+                  {PIP_SIZES.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              Apparaît à
+              <input
+                type="number" min={0} step={0.5} value={cfg.start}
+                onChange={(e) => setVideoOverlayConfig(platform, { start: Math.max(0, Number(e.target.value)) })}
+                className="w-14 text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+              />s
+            </label>
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              Disparaît à
+              <input
+                type="number" min={0} step={0.5} placeholder="fin"
+                value={cfg.end ?? ""}
+                onChange={(e) => setVideoOverlayConfig(platform, { end: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })}
+                className="w-16 text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+              />s
+            </label>
+          </div>
         </div>
       )}
     </div>
@@ -427,20 +466,60 @@ function PlatformCard({ platform, sourceUrl }) {
             style={{ filter: activeFilter.css }}
           />
         )}
-        {/* Aperçu statique de la vidéo incrustée (PiP), position/taille réelles */}
-        {!showDrawing && current.videoOverlayUrl && current.videoOverlayConfig && (
-          <video
-            src={current.videoOverlayUrl}
-            muted loop autoPlay
-            className="absolute rounded shadow-lg ring-1 ring-white/40 object-cover"
-            style={{
-              left: `${current.videoOverlayConfig.x * 100}%`,
-              top: `${current.videoOverlayConfig.y * 100}%`,
-              width: `${current.videoOverlayConfig.width_ratio * 100}%`,
-              aspectRatio: "16 / 9",
-            }}
-          />
-        )}
+        {/* Aperçu statique de la vidéo superposée — approximatif : la
+            disposition réelle (écran partagé, comparateur animé) et le
+            passage exact par start/end sont calculés côté serveur par
+            ffmpeg, voir repost/pipeline.py. */}
+        {!showDrawing && current.videoOverlayUrl && current.videoOverlayConfig && (() => {
+          const layout = current.videoOverlayConfig.layout || "pip";
+          if (layout === "pip") {
+            return (
+              <video
+                src={current.videoOverlayUrl}
+                muted loop autoPlay
+                className="absolute rounded shadow-lg ring-1 ring-white/40 object-cover"
+                style={{
+                  left: `${current.videoOverlayConfig.x * 100}%`,
+                  top: `${current.videoOverlayConfig.y * 100}%`,
+                  width: `${current.videoOverlayConfig.width_ratio * 100}%`,
+                  aspectRatio: "16 / 9",
+                }}
+              />
+            );
+          }
+          if (layout === "side_by_side" || layout === "top_bottom") {
+            const isSide = layout === "side_by_side";
+            return (
+              <div
+                className="absolute inset-0"
+                style={{ display: "flex", flexDirection: isSide ? "row" : "column" }}
+              >
+                <div className="flex-1" />
+                <video
+                  src={current.videoOverlayUrl}
+                  muted loop autoPlay
+                  className="flex-1 object-cover"
+                />
+              </div>
+            );
+          }
+          // compare_h / compare_v : aperçu figé à mi-révélation, pour donner
+          // une idée du comparateur (le vrai balayage animé est visible dans
+          // la vidéo exportée).
+          const isHorizontal = layout === "compare_h";
+          return (
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={isHorizontal ? { clipPath: "inset(0 0 0 50%)" } : { clipPath: "inset(50% 0 0 0)" }}
+            >
+              <video src={current.videoOverlayUrl} muted loop autoPlay className="absolute inset-0 w-full h-full object-cover" />
+              <div
+                className="absolute bg-white/80"
+                style={isHorizontal ? { left: 0, top: 0, bottom: 0, width: 2 } : { top: 0, left: 0, right: 0, height: 2 }}
+              />
+            </div>
+          );
+        })()}
         {/* Aperçu statique (non animé) des stickers, juste pour visualiser leur position de départ */}
         {!showDrawing && (current.animatedStickers || []).map((s, i) => {
           const meta = STICKER_TYPES.find((t) => t.id === s.type);
@@ -501,8 +580,10 @@ export default function PlatformEditor() {
         <Eraser size={16} /> Filtres, dessin &amp; effets par réseau
       </h3>
       <p className="text-xs text-gray-400 mb-3">
-        Dessine, ajoute des émojis ou une photo, incruste une vidéo (PiP) et anime des stickers
-        (fleur, papillon), indépendamment pour chaque plateforme.
+        Dessine, ajoute des émojis ou une photo, superpose une 2ᵉ vidéo — en incrustation (PiP),
+        en écran partagé (côte à côte / haut-bas) ou en comparateur avant/après animé — avec une
+        apparition et une disparition précises, et anime des stickers (fleur, papillon),
+        indépendamment pour chaque plateforme.
       </p>
       <div className="grid sm:grid-cols-2 gap-3">
         {platforms.map((platform) => (
