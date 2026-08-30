@@ -27,6 +27,10 @@ const toolConfig = {
   "pdf-watermark": {
     fields: [{ name: "text", label: "Texte du filigrane", type: "text", default: "CONFIDENTIEL" }],
   },
+  "pdf-compare": {
+    multiple: true,
+    fields: [],
+  },
   "pdf-protect": {
     fields: [{ name: "password", label: "Mot de passe à définir", type: "password" }],
   },
@@ -74,6 +78,20 @@ const toolConfig = {
   },
   "video-speed": {
     fields: [{ name: "factor", label: "Vitesse (ex: 1.5 = x1.5)", type: "number", default: 1.5, step: "0.1" }],
+  },
+  "audio-remove-silence": {
+    fields: [
+      { name: "threshold_db", label: "Seuil de silence (dB, ex: -35)", type: "number", default: -35 },
+      { name: "min_silence", label: "Durée minimale d'un silence (s)", type: "number", default: 0.6, step: "0.1" },
+      { name: "padding", label: "Coussin de silence conservé (s)", type: "number", default: 0.15, step: "0.05" },
+    ],
+  },
+  "video-remove-silence": {
+    fields: [
+      { name: "threshold_db", label: "Seuil de silence (dB, ex: -35)", type: "number", default: -35 },
+      { name: "min_silence", label: "Durée minimale d'un silence (s)", type: "number", default: 0.6, step: "0.1" },
+      { name: "padding", label: "Coussin de silence conservé (s)", type: "number", default: 0.15, step: "0.05" },
+    ],
   },
   "image-compress": {
     fields: [{ name: "quality", label: "Qualité (1-100)", type: "number", default: 70 }],

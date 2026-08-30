@@ -22,18 +22,32 @@ export const repostApi = {
     formData.append("caption_text", captionText || "");
     platforms.forEach((p) => formData.append("platforms", p));
 
-    // Filtre couleur choisi par plateforme (appliqué côté serveur via ffmpeg).
-    const filters = {};
+    // Filtre couleur + vidéo incrustée (PiP) + stickers animés, par plateforme
+    // (tout est composé côté serveur via ffmpeg, voir repost/pipeline.py).
+    const options = {};
     platforms.forEach((p) => {
-      filters[p] = { filter: platformOptions[p]?.filter || "none" };
+      const opt = platformOptions[p] || {};
+      options[p] = {
+        filter: opt.filter || "none",
+        video_overlay: opt.videoOverlayFile ? opt.videoOverlayConfig || {} : null,
+        animated_stickers: opt.animatedStickers || [],
+      };
     });
-    formData.append("platform_options", JSON.stringify(filters));
+    formData.append("platform_options", JSON.stringify(options));
 
-    // Dessin (canvas) par plateforme, envoyé comme image PNG transparente.
+    // Overlay statique (dessin + émojis + photo, aplatis en un seul PNG).
     platforms.forEach((p) => {
       const dataUrl = platformOptions[p]?.overlayDataUrl;
       if (dataUrl) {
         formData.append(`overlay_${p}`, dataUrlToBlob(dataUrl), `overlay_${p}.png`);
+      }
+    });
+
+    // Vidéo incrustée (picture-in-picture), un fichier vidéo par plateforme.
+    platforms.forEach((p) => {
+      const videoFile = platformOptions[p]?.videoOverlayFile;
+      if (videoFile) {
+        formData.append(`video_overlay_${p}`, videoFile, videoFile.name || `pip_${p}.mp4`);
       }
     });
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Sparkles, Loader2, Send } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Sparkles, Loader2, Send, Crown } from "lucide-react";
 import VideoUploader from "../components/repost/VideoUploader";
 import ClipTimeEditor from "../components/repost/ClipTimeEditor";
 import PlatformSelector from "../components/repost/PlatformSelector";
@@ -7,6 +8,7 @@ import PlatformEditor from "../components/repost/PlatformEditor";
 import { VariantGrid } from "../components/repost/VariantGrid";
 import { useCampaignStore } from "../stores/campaignStore";
 import { useVideoJob } from "../hooks/useVideoJob";
+import { useAuth } from "../context/AuthContext";
 import { repostApi } from "../api/repost";
 
 export default function RepostStudio() {
@@ -14,10 +16,13 @@ export default function RepostStudio() {
     sourceFile, clipStart, clipEnd, captionText, platforms, platformOptions,
     jobId, setCaptionText, setJobId, setJob,
   } = useCampaignStore();
+  const { user } = useAuth();
+  const canPublish = !!user?.is_premium;
 
   const [submitting, setSubmitting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
+  const [publishError, setPublishError] = useState("");
 
   const { job, loading: jobLoading } = useVideoJob(jobId, setJob);
 
@@ -45,11 +50,14 @@ export default function RepostStudio() {
   };
 
   const handlePublish = async () => {
+    setPublishError("");
     setPublishing(true);
     try {
       await repostApi.publishJob(jobId);
       const { data } = await repostApi.getJob(jobId);
       setJob(data);
+    } catch (err) {
+      setPublishError(err.response?.data?.error || "Erreur lors de la publication.");
     } finally {
       setPublishing(false);
     }
@@ -66,7 +74,9 @@ export default function RepostStudio() {
         </h1>
         <p className="text-gray-500 text-sm mt-1">
           Importe une vidéo, choisis l'extrait à publier, sélectionne les réseaux :
-          FileFlow recadre et adapte automatiquement une version par plateforme.
+          FileFlow recadre et adapte automatiquement une version par plateforme —
+          gratuitement, sans compte. Seule la publication directe sur les réseaux
+          est réservée à Premium (les versions restent téléchargeables gratuitement).
         </p>
       </div>
 
@@ -113,18 +123,36 @@ export default function RepostStudio() {
               <VariantGrid variants={job.variants} />
 
               {isCompleted && (
-                <button
-                  onClick={handlePublish}
-                  disabled={publishing}
-                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50"
-                >
-                  <Send size={16} /> {publishing ? "Publication..." : "Publier sur les réseaux sélectionnés"}
-                </button>
-              )}
-              {isCompleted && (
-                <p className="text-xs text-gray-400 text-center">
-                  Publication simulée tant qu'aucune connexion API n'est configurée côté serveur.
-                </p>
+                canPublish ? (
+                  <>
+                    <button
+                      onClick={handlePublish}
+                      disabled={publishing}
+                      className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      <Send size={16} /> {publishing ? "Publication..." : "Publier sur les réseaux sélectionnés"}
+                    </button>
+                    {publishError && (
+                      <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{publishError}</p>
+                    )}
+                    <p className="text-xs text-gray-400 text-center">
+                      Publication simulée tant qu'aucune connexion API n'est configurée côté serveur.
+                    </p>
+                  </>
+                ) : (
+                  <div className="border border-amber-200 bg-amber-50 rounded-lg px-3 py-3 text-center space-y-2">
+                    <p className="text-sm text-amber-800">
+                      Tes versions sont prêtes et téléchargeables gratuitement ci-dessus.
+                      La publication directe sur les réseaux est réservée à Premium.
+                    </p>
+                    <Link
+                      to="/pricing"
+                      className="inline-flex items-center gap-1.5 bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-600"
+                    >
+                      <Crown size={15} /> Passer Premium pour publier
+                    </Link>
+                  </div>
+                )
               )}
             </div>
           )}

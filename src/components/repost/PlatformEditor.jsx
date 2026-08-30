@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Eraser, Palette, Pencil, Undo2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Eraser, Palette, Pencil, Undo2, Smile, ImagePlus, Video, X, Sparkles } from "lucide-react";
 import { useCampaignStore } from "../../stores/campaignStore";
 
 const PLATFORM_LABELS = {
@@ -34,11 +34,33 @@ const FILTERS = [
 
 const BRUSH_COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#ffffff", "#000000"];
 
+const QUICK_EMOJIS = ["😀", "😂", "❤️", "🔥", "⭐", "🎉", "👍", "😍", "💯", "✨", "😎", "👏"];
+
+const POSITION_PRESETS = [
+  { id: "top_left", label: "Haut gauche", x: 0.08, y: 0.08 },
+  { id: "top_right", label: "Haut droite", x: 0.62, y: 0.08 },
+  { id: "center", label: "Centre", x: 0.35, y: 0.45 },
+  { id: "bottom_left", label: "Bas gauche", x: 0.08, y: 0.75 },
+  { id: "bottom_right", label: "Bas droite", x: 0.62, y: 0.75 },
+];
+
+const STICKER_TYPES = [
+  { id: "butterfly", label: "Papillon qui vole", icon: "/stickers/butterfly.png" },
+  { id: "flower", label: "Fleur qui bouge", icon: "/stickers/flower.png" },
+];
+
+// --- Canvas de dessin : trait libre, émojis et photo, aplatis en un même
+// PNG transparent envoyé au serveur (voir api/repost.js, overlay_<platform>).
 function DrawingCanvas({ platform, dims }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
+  const photoImgRef = useRef(null);
+  const [mode, setMode] = useState("pen"); // "pen" | "emoji" | "photo"
   const [color, setColor] = useState(BRUSH_COLORS[0]);
   const [brushSize, setBrushSize] = useState(6);
+  const [selectedEmoji, setSelectedEmoji] = useState(QUICK_EMOJIS[0]);
+  const [stickerSize, setStickerSize] = useState(Math.round(dims.width * 0.16));
+  const [photoReady, setPhotoReady] = useState(false);
   const { setPlatformOverlay, clearPlatformOverlay } = useCampaignStore();
 
   const getPos = (e) => {
@@ -52,7 +74,13 @@ function DrawingCanvas({ platform, dims }) {
     };
   };
 
+  const exportOverlay = () => {
+    const canvas = canvasRef.current;
+    setPlatformOverlay(platform, canvas.toDataURL("image/png"));
+  };
+
   const startDraw = (e) => {
+    if (mode !== "pen") return;
     e.preventDefault();
     const ctx = canvasRef.current.getContext("2d");
     const { x, y } = getPos(e);
@@ -62,7 +90,7 @@ function DrawingCanvas({ platform, dims }) {
   };
 
   const draw = (e) => {
-    if (!drawing.current) return;
+    if (mode !== "pen" || !drawing.current) return;
     e.preventDefault();
     const ctx = canvasRef.current.getContext("2d");
     const { x, y } = getPos(e);
@@ -75,14 +103,41 @@ function DrawingCanvas({ platform, dims }) {
   };
 
   const endDraw = () => {
-    if (!drawing.current) return;
+    if (mode !== "pen" || !drawing.current) return;
     drawing.current = false;
     exportOverlay();
   };
 
-  const exportOverlay = () => {
-    const canvas = canvasRef.current;
-    setPlatformOverlay(platform, canvas.toDataURL("image/png"));
+  // Émoji / photo : un tap sur le canvas "tamponne" l'élément sélectionné à
+  // l'endroit touché (pas de repositionnement après coup — on peut effacer
+  // et retenter). Le placement est directement aplati dans le raster, comme
+  // le trait de pinceau.
+  const handleStampClick = (e) => {
+    if (mode === "pen") return;
+    const { x, y } = getPos(e);
+    const ctx = canvasRef.current.getContext("2d");
+    if (mode === "emoji") {
+      ctx.font = `${stickerSize}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(selectedEmoji, x, y);
+      exportOverlay();
+    } else if (mode === "photo" && photoImgRef.current && photoReady) {
+      const img = photoImgRef.current;
+      const w = stickerSize;
+      const h = stickerSize * (img.naturalHeight / img.naturalWidth || 1);
+      ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+      exportOverlay();
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => setPhotoReady(true);
+    img.src = URL.createObjectURL(file);
+    photoImgRef.current = img;
   };
 
   const handleClear = () => {
@@ -97,7 +152,7 @@ function DrawingCanvas({ platform, dims }) {
         ref={canvasRef}
         width={dims.width}
         height={dims.height}
-        className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
+        className={`absolute inset-0 w-full h-full touch-none ${mode === "pen" ? "cursor-crosshair" : "cursor-copy"}`}
         onMouseDown={startDraw}
         onMouseMove={draw}
         onMouseUp={endDraw}
@@ -105,26 +160,78 @@ function DrawingCanvas({ platform, dims }) {
         onTouchStart={startDraw}
         onTouchMove={draw}
         onTouchEnd={endDraw}
+        onClick={handleStampClick}
       />
-      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between gap-2 bg-black/50 backdrop-blur rounded-lg px-2 py-1.5">
-        <div className="flex items-center gap-1">
-          {BRUSH_COLORS.map((c) => (
+
+      {/* Sélecteur de mode */}
+      <div className="absolute top-2 left-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur rounded-lg px-1.5 py-1">
+        <button type="button" onClick={() => setMode("pen")} title="Dessiner"
+          className={`p-1.5 rounded ${mode === "pen" ? "bg-white text-black" : "text-white/80 hover:text-white"}`}>
+          <Pencil size={14} />
+        </button>
+        <button type="button" onClick={() => setMode("emoji")} title="Émoji"
+          className={`p-1.5 rounded ${mode === "emoji" ? "bg-white text-black" : "text-white/80 hover:text-white"}`}>
+          <Smile size={14} />
+        </button>
+        <label title="Photo" className={`p-1.5 rounded cursor-pointer ${mode === "photo" ? "bg-white text-black" : "text-white/80 hover:text-white"}`}>
+          <ImagePlus size={14} />
+          <input
+            type="file" accept="image/*" className="hidden"
+            onChange={(e) => { handlePhotoChange(e); setMode("photo"); }}
+          />
+        </label>
+        <div className="flex-1" />
+        <input
+          type="range" min={16} max={Math.round(Math.min(dims.width, dims.height) * 0.5)}
+          value={stickerSize} onChange={(e) => setStickerSize(Number(e.target.value))}
+          className="w-14" title="Taille"
+        />
+      </div>
+
+      {/* Sélecteur d'émojis rapides */}
+      {mode === "emoji" && (
+        <div className="absolute top-11 left-2 right-2 flex flex-wrap gap-1 bg-black/50 backdrop-blur rounded-lg px-1.5 py-1">
+          {QUICK_EMOJIS.map((em) => (
             <button
-              key={c}
-              type="button"
-              onClick={() => setColor(c)}
-              className={`w-5 h-5 rounded-full border-2 ${color === c ? "border-white" : "border-transparent"}`}
-              style={{ backgroundColor: c }}
-              aria-label={`Couleur ${c}`}
-            />
+              key={em} type="button" onClick={() => setSelectedEmoji(em)}
+              className={`text-base leading-none w-6 h-6 flex items-center justify-center rounded ${selectedEmoji === em ? "bg-white/90" : ""}`}
+            >
+              {em}
+            </button>
           ))}
         </div>
-        <input
-          type="range" min={2} max={20} value={brushSize}
-          onChange={(e) => setBrushSize(Number(e.target.value))}
-          className="w-16"
-          aria-label="Épaisseur du trait"
-        />
+      )}
+      {mode === "photo" && !photoReady && (
+        <div className="absolute top-11 left-2 right-2 text-[11px] text-white bg-black/50 backdrop-blur rounded-lg px-2 py-1.5">
+          Choisis une photo puis touche l'aperçu pour la placer.
+        </div>
+      )}
+
+      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between gap-2 bg-black/50 backdrop-blur rounded-lg px-2 py-1.5">
+        {mode === "pen" ? (
+          <div className="flex items-center gap-1">
+            {BRUSH_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                className={`w-5 h-5 rounded-full border-2 ${color === c ? "border-white" : "border-transparent"}`}
+                style={{ backgroundColor: c }}
+                aria-label={`Couleur ${c}`}
+              />
+            ))}
+          </div>
+        ) : (
+          <span className="text-[11px] text-white/80">Touche l'aperçu pour placer</span>
+        )}
+        {mode === "pen" && (
+          <input
+            type="range" min={2} max={20} value={brushSize}
+            onChange={(e) => setBrushSize(Number(e.target.value))}
+            className="w-16"
+            aria-label="Épaisseur du trait"
+          />
+        )}
         <button
           type="button"
           onClick={handleClear}
@@ -133,6 +240,154 @@ function DrawingCanvas({ platform, dims }) {
           <Undo2 size={14} /> Effacer
         </button>
       </div>
+    </div>
+  );
+}
+
+// --- Vidéo superposée (picture-in-picture) --------------------------------
+const PIP_SIZES = [
+  { id: "small", label: "Petit", width_ratio: 0.25 },
+  { id: "medium", label: "Moyen", width_ratio: 0.35 },
+  { id: "large", label: "Grand", width_ratio: 0.5 },
+];
+
+function VideoOverlayPanel({ platform }) {
+  const { getPlatformOption, setVideoOverlayFile, setVideoOverlayConfig, clearVideoOverlay } = useCampaignStore();
+  const current = getPlatformOption(platform);
+  const cfg = current.videoOverlayConfig || { x: 0.6, y: 0.05, width_ratio: 0.35, start: 0 };
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVideoOverlayFile(platform, file, URL.createObjectURL(file));
+  };
+
+  const activePreset = POSITION_PRESETS.find((p) => Math.abs(p.x - cfg.x) < 0.01 && Math.abs(p.y - cfg.y) < 0.01);
+  const activeSize = PIP_SIZES.find((s) => Math.abs(s.width_ratio - cfg.width_ratio) < 0.01) || PIP_SIZES[1];
+
+  return (
+    <div className="mt-2 border-t border-gray-100 pt-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
+          <Video size={13} /> Vidéo superposée (PiP)
+        </span>
+        {current.videoOverlayFile ? (
+          <button type="button" onClick={() => clearVideoOverlay(platform)} className="text-gray-400 hover:text-red-500">
+            <X size={13} />
+          </button>
+        ) : (
+          <label className="text-xs text-blue-600 hover:underline cursor-pointer">
+            Ajouter
+            <input type="file" accept="video/*" className="hidden" onChange={handleFile} />
+          </label>
+        )}
+      </div>
+
+      {current.videoOverlayFile && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <select
+            value={activePreset?.id || "top_right"}
+            onChange={(e) => {
+              const preset = POSITION_PRESETS.find((p) => p.id === e.target.value);
+              if (preset) setVideoOverlayConfig(platform, { x: preset.x, y: preset.y });
+            }}
+            className="text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+          >
+            {POSITION_PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+          </select>
+          <select
+            value={activeSize.id}
+            onChange={(e) => {
+              const size = PIP_SIZES.find((s) => s.id === e.target.value);
+              if (size) setVideoOverlayConfig(platform, { width_ratio: size.width_ratio });
+            }}
+            className="text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+          >
+            {PIP_SIZES.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Départ
+            <input
+              type="number" min={0} step={0.5} value={cfg.start}
+              onChange={(e) => setVideoOverlayConfig(platform, { start: Math.max(0, Number(e.target.value)) })}
+              className="w-14 text-xs border border-gray-200 rounded-lg px-1.5 py-1"
+            />s
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Stickers animés (fleur qui bouge, papillon qui vole) ------------------
+function AnimatedStickersPanel({ platform }) {
+  const { getPlatformOption, addAnimatedSticker, updateAnimatedSticker, removeAnimatedSticker } = useCampaignStore();
+  const current = getPlatformOption(platform);
+  const stickers = current.animatedStickers || [];
+
+  return (
+    <div className="mt-2 border-t border-gray-100 pt-2">
+      <span className="text-xs font-medium text-gray-600 flex items-center gap-1 mb-1.5">
+        <Sparkles size={13} /> Éléments animés
+      </span>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        {STICKER_TYPES.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => addAnimatedSticker(platform, { type: s.id, start: 0, duration: 4, size: 0.2, x: 0.5, y: 0.5 })}
+            disabled={stickers.length >= 6}
+            className="flex items-center gap-1 text-xs border border-gray-200 rounded-full pl-1 pr-2 py-1 hover:border-blue-300 disabled:opacity-40"
+          >
+            <img src={s.icon} alt="" className="w-4 h-4" /> + {s.label}
+          </button>
+        ))}
+      </div>
+
+      {stickers.map((sticker, i) => {
+        const meta = STICKER_TYPES.find((s) => s.id === sticker.type);
+        const preset = POSITION_PRESETS.find((p) => Math.abs(p.x - sticker.x) < 0.02 && Math.abs(p.y - sticker.y) < 0.02);
+        return (
+          <div key={i} className="flex flex-wrap items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1.5 mb-1">
+            <img src={meta?.icon} alt="" className="w-4 h-4 shrink-0" />
+            <select
+              value={preset?.id || "center"}
+              onChange={(e) => {
+                const p = POSITION_PRESETS.find((p) => p.id === e.target.value);
+                if (p) updateAnimatedSticker(platform, i, { x: p.x, y: p.y });
+              }}
+              className="text-xs border border-gray-200 rounded-lg px-1 py-0.5"
+            >
+              {POSITION_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+            <label className="text-[11px] text-gray-500 flex items-center gap-0.5">
+              Départ
+              <input
+                type="number" min={0} step={0.5} value={sticker.start}
+                onChange={(e) => updateAnimatedSticker(platform, i, { start: Math.max(0, Number(e.target.value)) })}
+                className="w-12 text-xs border border-gray-200 rounded-lg px-1 py-0.5"
+              />s
+            </label>
+            <label className="text-[11px] text-gray-500 flex items-center gap-0.5">
+              Durée
+              <input
+                type="number" min={0.5} step={0.5} value={sticker.duration}
+                onChange={(e) => updateAnimatedSticker(platform, i, { duration: Math.max(0.5, Number(e.target.value)) })}
+                className="w-12 text-xs border border-gray-200 rounded-lg px-1 py-0.5"
+              />s
+            </label>
+            <button type="button" onClick={() => removeAnimatedSticker(platform, i)} className="ml-auto text-gray-400 hover:text-red-500">
+              <X size={13} />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -156,7 +411,7 @@ function PlatformCard({ platform, sourceUrl }) {
             showDrawing ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
-          <Pencil size={12} /> {showDrawing ? "Terminer le dessin" : "Dessiner"}
+          <Pencil size={12} /> {showDrawing ? "Terminer" : "Dessin / émoji / photo"}
         </button>
       </div>
 
@@ -172,6 +427,35 @@ function PlatformCard({ platform, sourceUrl }) {
             style={{ filter: activeFilter.css }}
           />
         )}
+        {/* Aperçu statique de la vidéo incrustée (PiP), position/taille réelles */}
+        {!showDrawing && current.videoOverlayUrl && current.videoOverlayConfig && (
+          <video
+            src={current.videoOverlayUrl}
+            muted loop autoPlay
+            className="absolute rounded shadow-lg ring-1 ring-white/40 object-cover"
+            style={{
+              left: `${current.videoOverlayConfig.x * 100}%`,
+              top: `${current.videoOverlayConfig.y * 100}%`,
+              width: `${current.videoOverlayConfig.width_ratio * 100}%`,
+              aspectRatio: "16 / 9",
+            }}
+          />
+        )}
+        {/* Aperçu statique (non animé) des stickers, juste pour visualiser leur position de départ */}
+        {!showDrawing && (current.animatedStickers || []).map((s, i) => {
+          const meta = STICKER_TYPES.find((t) => t.id === s.type);
+          if (!meta) return null;
+          return (
+            <img
+              key={i} src={meta.icon} alt=""
+              className="absolute pointer-events-none opacity-90"
+              style={{
+                left: `${s.x * 100}%`, top: `${s.y * 100}%`,
+                width: `${s.size * 100}%`, transform: "translate(-50%,-50%)",
+              }}
+            />
+          );
+        })}
         {showDrawing && <DrawingCanvas platform={platform} dims={dims} />}
         {!showDrawing && current.hasDrawing && (
           <img
@@ -199,6 +483,9 @@ function PlatformCard({ platform, sourceUrl }) {
           </button>
         ))}
       </div>
+
+      <VideoOverlayPanel platform={platform} />
+      <AnimatedStickersPanel platform={platform} />
     </div>
   );
 }
@@ -211,11 +498,11 @@ export default function PlatformEditor() {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4">
       <h3 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
-        <Eraser size={16} /> Filtres &amp; dessin par réseau
+        <Eraser size={16} /> Filtres, dessin &amp; effets par réseau
       </h3>
       <p className="text-xs text-gray-400 mb-3">
-        Applique un filtre couleur et/ou dessine par-dessus la vidéo, indépendamment pour chaque
-        plateforme, avant de générer les versions.
+        Dessine, ajoute des émojis ou une photo, incruste une vidéo (PiP) et anime des stickers
+        (fleur, papillon), indépendamment pour chaque plateforme.
       </p>
       <div className="grid sm:grid-cols-2 gap-3">
         {platforms.map((platform) => (

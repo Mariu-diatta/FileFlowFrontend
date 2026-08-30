@@ -15,10 +15,13 @@ export const useCampaignStore = create((set, get) => ({
   captionText: "",
   platforms: ["tiktok", "instagram", "youtube"],
 
-  // Édition par plateforme : filtre couleur + dessin libre (canvas), avant
-  // publication. Aucun appel IA — uniquement des filtres ffmpeg classiques
-  // côté serveur (voir repost/pipeline.py) et un overlay PNG dessiné dans
-  // le navigateur. Clé = id de plateforme, valeur = { filter, overlayDataUrl, hasDrawing }.
+  // Édition par plateforme : filtre couleur + dessin libre/émojis/photo
+  // (canvas aplati en PNG), vidéo incrustée (picture-in-picture) et
+  // stickers animés intégrés (fleur/papillon). Aucun appel IA — uniquement
+  // des filtres et compositions ffmpeg classiques côté serveur (voir
+  // repost/pipeline.py). Clé = id de plateforme, valeur = { filter,
+  // overlayDataUrl, hasDrawing, videoOverlayFile, videoOverlayConfig,
+  // animatedStickers }.
   platformOptions: {},
 
   jobId: null,
@@ -43,7 +46,14 @@ export const useCampaignStore = create((set, get) => ({
     })),
 
   getPlatformOption: (platform) =>
-    get().platformOptions[platform] || { filter: "none", overlayDataUrl: null, hasDrawing: false },
+    get().platformOptions[platform] || {
+      filter: "none",
+      overlayDataUrl: null,
+      hasDrawing: false,
+      videoOverlayFile: null,
+      videoOverlayConfig: null,
+      animatedStickers: [],
+    },
 
   setPlatformFilter: (platform, filter) =>
     set((state) => ({
@@ -72,6 +82,83 @@ export const useCampaignStore = create((set, get) => ({
         [platform]: { ...(state.platformOptions[platform] || {}), overlayDataUrl: null, hasDrawing: false },
       },
     })),
+
+  // Vidéo incrustée (picture-in-picture)
+  setVideoOverlayFile: (platform, file, url) =>
+    set((state) => ({
+      platformOptions: {
+        ...state.platformOptions,
+        [platform]: {
+          ...(state.platformOptions[platform] || {}),
+          videoOverlayFile: file,
+          videoOverlayUrl: url,
+          videoOverlayConfig: file
+            ? { x: 0.6, y: 0.05, width_ratio: 0.35, start: 0, ...(state.platformOptions[platform]?.videoOverlayConfig || {}) }
+            : null,
+        },
+      },
+    })),
+
+  setVideoOverlayConfig: (platform, patch) =>
+    set((state) => ({
+      platformOptions: {
+        ...state.platformOptions,
+        [platform]: {
+          ...(state.platformOptions[platform] || {}),
+          videoOverlayConfig: { ...(state.platformOptions[platform]?.videoOverlayConfig || {}), ...patch },
+        },
+      },
+    })),
+
+  clearVideoOverlay: (platform) =>
+    set((state) => ({
+      platformOptions: {
+        ...state.platformOptions,
+        [platform]: {
+          ...(state.platformOptions[platform] || {}),
+          videoOverlayFile: null, videoOverlayUrl: null, videoOverlayConfig: null,
+        },
+      },
+    })),
+
+  // Stickers animés (fleur / papillon...)
+  addAnimatedSticker: (platform, sticker) =>
+    set((state) => {
+      const current = state.platformOptions[platform]?.animatedStickers || [];
+      if (current.length >= 6) return {};
+      return {
+        platformOptions: {
+          ...state.platformOptions,
+          [platform]: { ...(state.platformOptions[platform] || {}), animatedStickers: [...current, sticker] },
+        },
+      };
+    }),
+
+  updateAnimatedSticker: (platform, index, patch) =>
+    set((state) => {
+      const current = state.platformOptions[platform]?.animatedStickers || [];
+      const next = current.map((s, i) => (i === index ? { ...s, ...patch } : s));
+      return {
+        platformOptions: {
+          ...state.platformOptions,
+          [platform]: { ...(state.platformOptions[platform] || {}), animatedStickers: next },
+        },
+      };
+    }),
+
+  removeAnimatedSticker: (platform, index) =>
+    set((state) => {
+      const current = state.platformOptions[platform]?.animatedStickers || [];
+      return {
+        platformOptions: {
+          ...state.platformOptions,
+          [platform]: {
+            ...(state.platformOptions[platform] || {}),
+            animatedStickers: current.filter((_, i) => i !== index),
+          },
+        },
+      };
+    }),
 
   setJobId: (jobId) => set({ jobId, job: null }),
   setJob: (job) => set({ job }),

@@ -22,20 +22,31 @@ const STATUS_META = {
   failed: { icon: AlertCircle, label: "Échec", color: "text-red-500" },
 };
 
+const STICKER_LABELS = { butterfly: "🦋 Papillon", flower: "🌸 Fleur" };
+
 export function VariantCard({ variant }) {
   const meta = STATUS_META[variant.status] || STATUS_META.queued;
   const StatusIcon = meta.icon;
+  const stickerBadges = [...new Set((variant.animated_stickers || []).map((s) => s.type))];
 
   return (
     <article className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       <header className="flex items-center justify-between px-3 py-2 border-b border-gray-100">
         <strong className="text-sm">{PLATFORM_LABELS[variant.platform] || variant.platform}</strong>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {FILTER_LABELS[variant.filter_name] && (
             <span className="text-[11px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
               {FILTER_LABELS[variant.filter_name]}
             </span>
           )}
+          {variant.hasVideoOverlay && (
+            <span className="text-[11px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">PiP vidéo</span>
+          )}
+          {stickerBadges.map((type) => (
+            <span key={type} className="text-[11px] bg-pink-50 text-pink-600 px-1.5 py-0.5 rounded-full">
+              {STICKER_LABELS[type] || type}
+            </span>
+          ))}
           <span className="text-xs text-gray-400">{variant.width} × {variant.height}</span>
         </div>
       </header>
