@@ -22,8 +22,12 @@ export const repostApi = {
     formData.append("caption_text", captionText || "");
     platforms.forEach((p) => formData.append("platforms", p));
 
-    // Filtre couleur + vidéo incrustée (PiP) + stickers animés, par plateforme
-    // (tout est composé côté serveur via ffmpeg, voir repost/pipeline.py).
+    // Filtre couleur + vidéo incrustée (PiP) + stickers animés + calques
+    // médias (émojis/photos positionnés-redimensionnés-temporisés), par
+    // plateforme (tout est composé côté serveur via ffmpeg, voir
+    // repost/pipeline.py). Les émojis sont envoyés en texte ; chaque photo
+    // est jointe séparément en fichier (voir plus bas), référencée ici par
+    // son id pour que le serveur recolle la bonne image au bon calque.
     const options = {};
     platforms.forEach((p) => {
       const opt = platformOptions[p] || {};
@@ -31,16 +35,34 @@ export const repostApi = {
         filter: opt.filter || "none",
         video_overlay: opt.videoOverlayFile ? opt.videoOverlayConfig || {} : null,
         animated_stickers: opt.animatedStickers || [],
+        media_overlays: (opt.mediaOverlays || []).map((m) => ({
+          id: m.id,
+          kind: m.kind,
+          content: m.kind === "emoji" ? m.content : undefined,
+          x: m.x, y: m.y, width: m.width, height: m.height,
+          start: m.start, end: m.end,
+        })),
       };
     });
     formData.append("platform_options", JSON.stringify(options));
 
-    // Overlay statique (dessin + émojis + photo, aplatis en un seul PNG).
+    // Overlay statique (trait libre au pinceau uniquement, aplati en un
+    // seul PNG transparent).
     platforms.forEach((p) => {
       const dataUrl = platformOptions[p]?.overlayDataUrl;
       if (dataUrl) {
         formData.append(`overlay_${p}`, dataUrlToBlob(dataUrl), `overlay_${p}.png`);
       }
+    });
+
+    // Photos des calques médias : un fichier par calque, nommé avec son id
+    // pour être recollé au bon élément de media_overlays côté serveur.
+    platforms.forEach((p) => {
+      (platformOptions[p]?.mediaOverlays || []).forEach((m) => {
+        if (m.kind === "photo" && m.content) {
+          formData.append(`media_overlay_${p}_${m.id}`, dataUrlToBlob(m.content), `${m.id}.png`);
+        }
+      });
     });
 
     // Vidéo incrustée (picture-in-picture), un fichier vidéo par plateforme.

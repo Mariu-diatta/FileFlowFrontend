@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Sparkles, Loader2, Send, Crown } from "lucide-react";
 import VideoUploader from "../components/repost/VideoUploader";
-import ClipTimeEditor from "../components/repost/ClipTimeEditor";
 import PlatformSelector from "../components/repost/PlatformSelector";
 import PlatformEditor from "../components/repost/PlatformEditor";
 import { VariantGrid } from "../components/repost/VariantGrid";
@@ -83,7 +82,6 @@ export default function RepostStudio() {
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-5">
           <VideoUploader />
-          <ClipTimeEditor />
 
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <label className="block text-sm font-medium mb-1">Légende / texte du post</label>

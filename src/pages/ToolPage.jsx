@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Download, Lock, Loader2, ArrowLeft } from "lucide-react";
+import { Lock, Loader2, ArrowLeft } from "lucide-react";
 import { tools as toolsApi } from "../api/client";
 import toolConfig from "../toolConfig";
 import { useAuth } from "../context/AuthContext";
 import ToolComments from "../components/ToolComments";
-import FileDropzone from "../components/FileDropzone";
+import FileSlotManager from "../components/FileSlotManager";
+import ResultPreview from "../components/ResultPreview";
 import ResultView from "../components/ResultView";
 
 export default function ToolPage() {
@@ -18,6 +19,7 @@ export default function ToolPage() {
   const [error, setError] = useState("");
   const [resultUrl, setResultUrl] = useState(null);
   const [resultFilename, setResultFilename] = useState("");
+  const [resultContentType, setResultContentType] = useState("");
   const [resultJson, setResultJson] = useState(null);
 
   const config = toolConfig[slug] || { fields: [] };
@@ -31,9 +33,11 @@ export default function ToolPage() {
       if (f.default !== undefined) initial[f.name] = f.default;
     });
     setParams(initial);
+    setFiles([]);
     setResultUrl(null);
     setResultJson(null);
     setError("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   const handleParamChange = (name, value) => {
@@ -70,6 +74,7 @@ export default function ToolPage() {
         const disposition = response.headers["content-disposition"] || "";
         const match = disposition.match(/filename="?([^"]+)"?/);
         setResultFilename(match ? match[1] : "resultat");
+        setResultContentType(contentType);
         setResultUrl(URL.createObjectURL(response.data));
       }
       refreshMe();
@@ -108,10 +113,12 @@ export default function ToolPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          <FileDropzone
+          <FileSlotManager
             multiple={config.multiple}
             files={files}
             onFiles={setFiles}
+            labels={config.fileLabels}
+            orderHint={config.orderHint || (config.multiple && !config.fileLabels ? "Glisse une carte pour changer l'ordre de traitement." : undefined)}
             label={`Glisse-dépose ${config.multiple ? "un ou plusieurs fichiers" : "un fichier"} ici, clique pour parcourir, ou importe depuis un lien`}
           />
 
@@ -154,13 +161,7 @@ export default function ToolPage() {
           </button>
 
           {resultUrl && (
-            <a
-              href={resultUrl}
-              download={resultFilename}
-              className="w-full block text-center bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2"
-            >
-              <Download size={18} /> Télécharger le résultat
-            </a>
+            <ResultPreview resultUrl={resultUrl} suggestedFilename={resultFilename} contentType={resultContentType} />
           )}
 
           {resultJson && <ResultView data={resultJson} />}

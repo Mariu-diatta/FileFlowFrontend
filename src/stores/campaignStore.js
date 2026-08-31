@@ -15,13 +15,14 @@ export const useCampaignStore = create((set, get) => ({
   captionText: "",
   platforms: ["tiktok", "instagram", "youtube"],
 
-  // Édition par plateforme : filtre couleur + dessin libre/émojis/photo
-  // (canvas aplati en PNG), vidéo incrustée (picture-in-picture) et
-  // stickers animés intégrés (fleur/papillon). Aucun appel IA — uniquement
-  // des filtres et compositions ffmpeg classiques côté serveur (voir
-  // repost/pipeline.py). Clé = id de plateforme, valeur = { filter,
-  // overlayDataUrl, hasDrawing, videoOverlayFile, videoOverlayConfig,
-  // animatedStickers }.
+  // Édition par plateforme : filtre couleur + dessin libre au pinceau
+  // (canvas aplati en PNG), calques médias déplaçables/redimensionnables
+  // (émojis/photos avec apparition-disparition temporisée), vidéo incrustée
+  // (picture-in-picture) et stickers animés intégrés (fleur/papillon).
+  // Aucun appel IA — uniquement des filtres et compositions ffmpeg
+  // classiques côté serveur (voir repost/pipeline.py). Clé = id de
+  // plateforme, valeur = { filter, overlayDataUrl, hasDrawing,
+  // mediaOverlays, videoOverlayFile, videoOverlayConfig, animatedStickers }.
   platformOptions: {},
 
   jobId: null,
@@ -50,6 +51,7 @@ export const useCampaignStore = create((set, get) => ({
       filter: "none",
       overlayDataUrl: null,
       hasDrawing: false,
+      mediaOverlays: [],
       videoOverlayFile: null,
       videoOverlayConfig: null,
       animatedStickers: [],
@@ -125,6 +127,48 @@ export const useCampaignStore = create((set, get) => ({
         },
       },
     })),
+
+  // Calques médias (émoji ou photo) déplaçables/redimensionnables librement
+  // sur l'aperçu, avec une fenêtre d'apparition-disparition (start/end en
+  // secondes, comme la vidéo incrustée). x/y = coin haut-gauche en fraction
+  // (0-1) du cadre vidéo, width/height = taille en fraction du cadre —
+  // indépendant de la résolution finale, comme le reste des overlays.
+  addMediaOverlay: (platform, overlay) =>
+    set((state) => {
+      const current = state.platformOptions[platform]?.mediaOverlays || [];
+      return {
+        platformOptions: {
+          ...state.platformOptions,
+          [platform]: { ...(state.platformOptions[platform] || {}), mediaOverlays: [...current, overlay] },
+        },
+      };
+    }),
+
+  updateMediaOverlay: (platform, id, patch) =>
+    set((state) => {
+      const current = state.platformOptions[platform]?.mediaOverlays || [];
+      const next = current.map((m) => (m.id === id ? { ...m, ...patch } : m));
+      return {
+        platformOptions: {
+          ...state.platformOptions,
+          [platform]: { ...(state.platformOptions[platform] || {}), mediaOverlays: next },
+        },
+      };
+    }),
+
+  removeMediaOverlay: (platform, id) =>
+    set((state) => {
+      const current = state.platformOptions[platform]?.mediaOverlays || [];
+      return {
+        platformOptions: {
+          ...state.platformOptions,
+          [platform]: {
+            ...(state.platformOptions[platform] || {}),
+            mediaOverlays: current.filter((m) => m.id !== id),
+          },
+        },
+      };
+    }),
 
   // Stickers animés (fleur / papillon...)
   addAnimatedSticker: (platform, sticker) =>

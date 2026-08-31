@@ -44,3 +44,13 @@ input[type="range"].dual-range::-moz-range-track {
   height: 2px;
   background: transparent;
 }
+
+/* Lignes qui défilent horizontalement (filtres, effets spéciaux, émojis) :
+   scrollable au doigt/à la molette, sans barre de défilement visible. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

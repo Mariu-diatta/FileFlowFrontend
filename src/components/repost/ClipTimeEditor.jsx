@@ -453,6 +453,9 @@ function PlatformCard({ platform, sourceUrl }) {
           <video
             src={sourceUrl}
             muted
+            loop
+            autoPlay
+            playsInline
             className="absolute inset-0 w-full h-full object-cover"
             style={{ filter: activeFilter.css }}
           />
@@ -461,7 +464,7 @@ function PlatformCard({ platform, sourceUrl }) {
         {!showDrawing && current.videoOverlayUrl && current.videoOverlayConfig && (
           <video
             src={current.videoOverlayUrl}
-            muted loop autoPlay
+            muted loop autoPlay playsInline
             className="absolute rounded shadow-lg ring-1 ring-white/40 object-cover"
             style={{
               left: `${current.videoOverlayConfig.x * 100}%`,

@@ -2,7 +2,7 @@
 // frontend. Les outils absents de cette liste s'affichent avec un simple
 // bouton d'upload + exécution (aucun paramètre requis).
 const toolConfig = {
-    "pdf-merge": { multiple: true, fields: [] },
+    "pdf-merge": { multiple: true, fields: [], orderHint: "Glisse les cartes pour changer l'ordre de fusion des PDF." },
     "pdf-split": {
         fields: [{ name: "every_n_pages", label: "Nombre de pages par fichier", type: "number", default: 1 }],
     },
@@ -30,6 +30,7 @@ const toolConfig = {
     "pdf-compare": {
         multiple: true,
         fields: [],
+        fileLabels: ["Ancienne version", "Nouvelle version"],
     },
     "pdf-protect": {
         fields: [{ name: "password", label: "Mot de passe à définir", type: "password" }],
@@ -37,7 +38,7 @@ const toolConfig = {
     "pdf-unlock": {
         fields: [{ name: "password", label: "Mot de passe actuel du PDF", type: "password" }],
     },
-    "images-to-pdf": { multiple: true, fields: [] },
+    "images-to-pdf": { multiple: true, fields: [], orderHint: "Glisse les cartes pour changer l'ordre des pages du PDF." },
     "audio-convert": {
         fields: [{ name: "target_format", label: "Format cible", type: "select", options: ["mp3", "wav", "ogg", "flac"], default: "mp3" }],
     },
@@ -47,7 +48,7 @@ const toolConfig = {
             { name: "duration", label: "Durée (secondes)", type: "number" },
         ],
     },
-    "audio-merge": { multiple: true, fields: [] },
+    "audio-merge": { multiple: true, fields: [], orderHint: "Glisse les cartes pour changer l'ordre de fusion des pistes." },
     "audio-volume": {
         fields: [{ name: "factor", label: "Facteur de volume (1 = inchangé)", type: "number", default: 1.5, step: "0.1" }],
     },
@@ -69,7 +70,7 @@ const toolConfig = {
             { name: "duration", label: "Durée (secondes)", type: "number" },
         ],
     },
-    "video-merge": { multiple: true, fields: [] },
+    "video-merge": { multiple: true, fields: [], orderHint: "Glisse les cartes pour changer l'ordre de fusion des vidéos." },
     "video-extract-frame": {
         fields: [{ name: "timestamp", label: "Instant (HH:MM:SS)", type: "text", default: "00:00:01" }],
     },
@@ -100,12 +101,14 @@ const toolConfig = {
             { name: "similarity", label: "Similarité (0 à 1)", type: "number", default: 0.20, step: "0.01" },
             { name: "blend", label: "Lissage des bords (0 à 1)", type: "number", default: 0.05, step: "0.01" },
         ],
+        fileLabels: ["Vidéo (fond vert/bleu)", "Image de fond"],
     },
     "video-replace-bg-static": {
         multiple: true,
         fields: [
             { name: "sensitivity", label: "Sensibilité au mouvement (1-100)", type: "number", default: 16 },
         ],
+        fileLabels: ["Vidéo (caméra fixe)", "Image de fond"],
     },
     "image-compress": {
         fields: [{ name: "quality", label: "Qualité (1-100)", type: "number", default: 70 }],
@@ -123,6 +126,14 @@ const toolConfig = {
             { name: "right", label: "Droite (px)", type: "number" },
             { name: "bottom", label: "Bas (px)", type: "number" },
         ],
+    },
+    "image-merge": {
+        multiple: true,
+        fields: [
+            { name: "direction", label: "Disposition", type: "select", options: [["horizontal", "Côte à côte"], ["vertical", "Empilées"]], default: "horizontal" },
+            { name: "spacing", label: "Espacement entre images (px)", type: "number", default: 0 },
+        ],
+        orderHint: "Glisse les cartes pour changer l'ordre des images dans l'image finale.",
     },
     "image-convert": {
         fields: [{ name: "target_format", label: "Format cible", type: "select", options: ["png", "jpg", "webp"], default: "png" }],
